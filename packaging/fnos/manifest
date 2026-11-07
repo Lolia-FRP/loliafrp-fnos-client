@@ -1,0 +1,17 @@
+appname=loliafrp
+version=1.0.0-beta
+display_name=LoliaFRP 内网穿透
+desc=LoliaFRP 飞牛客户端 <br>官网：https://lolia.link
+source=thirdparty
+platform=x86
+maintainer=unify-z
+maintainer_url=https://lolia.link
+distributor=LoliaFRP
+distributor_url=https://lolia.link
+changelog=登录后自动下载匹配架构的隧道内核，提供后台下载进度、失败重试和管理员更新。
+os_min_version=1.1.3100
+desktop_uidir=ui
+desktop_applaunchname=loliafrp.main
+ctl_stop=true
+checkport=false
+disable_authorization_path=true

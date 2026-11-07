@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+umask 077
+: "${TRIM_PKGETC:?}" "${TRIM_PKGVAR:?}" "${TRIM_PKGTMP:?}" "${TRIM_APPDEST:?}"
+mkdir -p "${TRIM_PKGETC}" "${TRIM_PKGVAR}/logs" "${TRIM_PKGTMP}"
+chmod 700 "${TRIM_PKGETC}" "${TRIM_PKGVAR}" "${TRIM_PKGVAR}/logs" "${TRIM_PKGTMP}"

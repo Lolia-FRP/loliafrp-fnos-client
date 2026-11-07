@@ -1,0 +1,1 @@
+[{"stepTitle":"卸载 LoliaFRP","items":[{"type":"switch","field":"wizard_keep_data","label":"保留账号绑定、设置、内核和日志","initValue":"true"}]}]

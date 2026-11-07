@@ -1,0 +1,14 @@
+{
+  ".url": {
+    "loliafrp.main": {
+      "title": "LoliaFRP",
+      "icon": "images/icon_{0}.png",
+      "type": "iframe",
+      "protocol": "",
+      "gatewayPrefix": "/app/loliafrp",
+      "gatewaySocket": "app.sock",
+      "url": "/app/loliafrp/",
+      "allUsers": true
+    }
+  }
+}

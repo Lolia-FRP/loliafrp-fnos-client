@@ -1,0 +1,53 @@
+#!/bin/sh
+set -eu
+umask 077
+: "${TRIM_APPDEST:?}" "${TRIM_PKGVAR:?}" "${TRIM_PKGTMP:?}"
+PID_FILE="${TRIM_PKGVAR}/manager.pid"
+LOG_FILE="${TRIM_PKGVAR}/logs/manager.log"
+BIN="${TRIM_APPDEST}/bin/loliafrp-manager"
+SOCKET="${TRIM_APPDEST}/app.sock"
+error() { printf '%s\n' "$1" > "${TRIM_TEMP_LOGFILE:-/dev/null}"; }
+is_running() {
+  [ -f "$PID_FILE" ] || return 1
+  pid="$(cat "$PID_FILE")"
+  case "$pid" in ''|*[!0-9]*) return 1;; esac
+  kill -0 "$pid" 2>/dev/null || return 1
+  [ -e "/proc/$pid/exe" ] && [ "$BIN" -ef "/proc/$pid/exe" ]
+}
+case "${1:-}" in
+  start)
+    if is_running; then exit 0; fi
+    mkdir -p "${TRIM_PKGVAR}/logs" "${TRIM_PKGTMP}"
+    chmod 700 "${TRIM_PKGVAR}/logs" "${TRIM_PKGTMP}"
+    if [ -e "$SOCKET" ] && [ ! -S "$SOCKET" ]; then error '网关 Socket 路径被普通文件占用。'; exit 1; fi
+    rm -f "$PID_FILE" "$SOCKET"
+    if [ -f "$LOG_FILE" ] && [ "$(wc -c < "$LOG_FILE")" -gt 10485760 ]; then mv -f "$LOG_FILE" "$LOG_FILE.1"; fi
+    "$BIN" -socket "$SOCKET" >> "$LOG_FILE" 2>&1 &
+    pid=$!
+    printf '%s\n' "$pid" > "$PID_FILE"
+    i=0
+    while [ "$i" -lt 300 ]; do
+      if [ -S "$SOCKET" ] && is_running; then exit 0; fi
+      if ! kill -0 "$pid" 2>/dev/null; then break; fi
+      i=$((i + 1)); sleep 0.1
+    done
+    kill -TERM "$pid" 2>/dev/null || true
+    rm -f "$PID_FILE" "$SOCKET"
+    error 'LoliaFRP 启动失败，请检查应用数据目录 logs/manager.log。'
+    exit 1
+    ;;
+  stop)
+    if ! is_running; then rm -f "$PID_FILE" "$SOCKET"; exit 0; fi
+    pid="$(cat "$PID_FILE")"
+    kill -TERM "$pid" 2>/dev/null || true
+    i=0
+    while is_running && [ "$i" -lt 250 ]; do i=$((i + 1)); sleep 0.1; done
+    if is_running; then kill -KILL "$pid" 2>/dev/null || true; fi
+    rm -f "$PID_FILE" "$SOCKET"
+    ;;
+  status)
+    if is_running && [ -S "$SOCKET" ]; then exit 0; fi
+    exit 3
+    ;;
+  *) error '不支持的运行控制命令。'; exit 1;;
+esac
