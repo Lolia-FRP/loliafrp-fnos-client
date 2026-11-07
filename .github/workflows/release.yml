@@ -1,0 +1,78 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Building version: ${VERSION}"
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Build fnOS amd64 package
+        run: |
+          ./scripts/build-fnos.sh --arch amd64 --version "${{ steps.get_version.outputs.version }}" --skip-frontend
+
+      - name: Build fnOS arm64 package
+        run: |
+          ./scripts/build-fnos.sh --arch arm64 --version "${{ steps.get_version.outputs.version }}" --skip-frontend
+
+      - name: Generate Checksums
+        run: |
+          cd build
+          sha256sum loliafrp-${{ steps.get_version.outputs.version }}-*.fpk > checksums.txt
+          cat checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "LoliaFrp fnOS Client v${{ steps.get_version.outputs.version }}"
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v{0}', steps.get_version.outputs.version) || github.ref_name }}
+          files: |
+            build/loliafrp-${{ steps.get_version.outputs.version }}-*.fpk
+            build/checksums.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.version, 'beta') || contains(steps.get_version.outputs.version, 'alpha') || contains(steps.get_version.outputs.version, 'rc') }}
